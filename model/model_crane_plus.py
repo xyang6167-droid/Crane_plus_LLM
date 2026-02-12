@@ -286,7 +286,7 @@ class CraneBlock(nn.Module):
         return hidden_states, present_key_value
 
        
-class CraneModel(nn.Model):
+class CraneModel(nn.Module):
     ## Crane模型主体（Decoder-only Transformer）
 
     def __init__(self,config:Crane_PlusConfig):
