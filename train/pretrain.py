@@ -145,7 +145,7 @@ if __name__ == "__main__":
     Logger('Dataset ready')
 
     scaler = torch.amp.GradScaler('cuda', enabled=(args.dtype == 'float16'))
-    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=0.1)
+    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=0.01)
     Logger('Optimizer ready')
 
     # ========== 6. 从 ckp 恢复 ==========
@@ -158,3 +158,36 @@ if __name__ == "__main__":
         start_epoch = ckp_data['epoch']
         start_step = ckp_data.get('step', 0)
         Logger(f'Checkpoint loaded: epoch={start_epoch}, step={start_step}')
+    
+     # ========== 7. 总步数（单卡）==========
+    steps_per_epoch = len(train_ds) // args.batch_size
+    total_steps = args.epochs * steps_per_epoch
+    warmup_steps = int(total_steps * 0.03)
+    Logger(f'Steps per epoch: {steps_per_epoch}, Total steps: {total_steps}, Warmup: {warmup_steps}')
+
+    # ========== 8. 初始评测 (step 0) ==========
+    if args.eval_bench == 1 and tokenizer is not None and start_epoch == 0 and start_step == 0:
+        Logger('Running initial benchmark evaluation (step 0)...')
+        model.eval()
+        c3_path = r'D:\project_nju\CranePlus\benchmark\clue_c3_eval_500.jsonl'
+        xcopa_path = r'D:\project_nju\CranePlus\benchmark\xcopa_zh_merged.jsonl'
+        eval_results = run_benchmark(model, tokenizer, c3_path, xcopa_path)
+        if swanlab_run:
+            swanlab_run.log(eval_results, step=0)
+        Logger(f'Initial benchmark results (step 0): {eval_results}')
+        model.train()
+
+    # ========== 9. 训练循环 ==========
+    Logger(f'Starting training: {args.epochs} epochs, batch_size={args.batch_size} (single GPU)')
+    for epoch in range(start_epoch, args.epochs):
+        indices = torch.randperm(len(train_ds)).tolist()
+        skip = start_step if (epoch == start_epoch and start_step > 0) else 0
+        batch_sampler = SkipBatchSampler(indices, args.batch_size, skip)
+        loader = DataLoader(train_ds, batch_sampler=batch_sampler, num_workers=args.num_workers, pin_memory=True)
+        if skip > 0:
+            Logger(f'Epoch [{epoch + 1}/{args.epochs}]: 跳过前{start_step}个step，从step {start_step + 1}开始')
+            train_epoch(epoch, loader, len(loader) + skip, start_step, swanlab_run, total_steps, warmup_steps, full_save_dir)
+        else:
+            train_epoch(epoch, loader, len(loader), 0, swanlab_run, total_steps, warmup_steps, full_save_dir)
+
+    Logger('Training done.')
