@@ -51,7 +51,47 @@ def train_epoch(epoch, loader, iters,  start_step=0, swanlab=None, total_steps=N
 
         global_step = epoch*iters + step
 
-        
+        if step % args.log_interval == 0 or step == iters - 1:
+            spend_time = time.time() - start_time
+            current_loss = loss.item() * args.accumulation_steps
+            current_lr = optimizer.param_groups[-1]['lr']
+            eta_min = spend_time / (step + 1) * iters // 60 - spend_time // 60
+            Logger(f'Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}), loss: {current_loss:.4f}, lr: {current_lr:.8f}, epoch_time: {eta_min:.1f}min')
+            if swanlab:
+                swanlab.log({"loss": current_loss, "learning_rate": current_lr, "eta_time": eta_min}, step=global_step)
+
+        # 保存 checkpoint
+        if global_step % args.save_interval == 0 or step == iters - 1:
+            model.eval()
+            ckp_dir = f'{full_save_dir}/global_step_{global_step}'
+            os.makedirs(ckp_dir, exist_ok=True)
+            raw_model = getattr(model, '_orig_mod', model)
+            state_dict = {k: v.half().cpu() for k, v in raw_model.state_dict().items()}
+            torch.save(state_dict, f'{ckp_dir}/{args.save_weight}_{lm_config.hidden_size}.pth')
+            torch.save({
+                'model': state_dict,
+                'optimizer': optimizer.state_dict(),
+                'scaler': scaler.state_dict(),
+                'epoch': epoch,
+                'step': step,
+                'global_step': global_step,
+                'swanlab_id': getattr(swanlab, 'id', None) if swanlab else None
+            }, f'{ckp_dir}/resume.pth')
+            Logger(f'Saved checkpoint: {ckp_dir}')
+            model.train()
+
+        # Benchmark 评测
+        if args.eval_bench == 1 and tokenizer is not None and global_step % args.eval_interval == 0:
+            model.eval()
+            c3_path = r'/root/autodl-tmp/Crane_plus_LLM/benchmark/clue_c3_eval_500.jsonl'
+            xcopa_path = r'/root/autodl-tmp/Crane_plus_LLM/benchmark/xcopa_zh_merged.jsonl'
+            eval_results = run_benchmark(model, tokenizer, c3_path, xcopa_path)
+            if swanlab_run:
+                swanlab_run.log(eval_results, step=global_step)
+            Logger(f'Benchmark results: {eval_results}')
+            model.train()
+
+        del input_ids, labels, res, loss
 
 
 
@@ -59,7 +99,7 @@ def train_epoch(epoch, loader, iters,  start_step=0, swanlab=None, total_steps=N
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Crane Pretraining (Single GPU)")
-    parser.add_argument("--save_dir", type=str, default="../pretrain_out", help="模型保存根目录")
+    parser.add_argument("--save_dir", type=str, default="../pretrain_out/exp1", help="模型保存根目录")
     parser.add_argument('--save_weight', default='pretrain', type=str, help="保存权重的前缀名")
     parser.add_argument("--epochs", type=int, default=2, help="训练轮数")
     parser.add_argument("--batch_size", type=int, default=128, help="batch size")
@@ -74,7 +114,7 @@ if __name__ == "__main__":
     parser.add_argument('--hidden_size', default=768, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=12, type=int, help="隐藏层数量")
     parser.add_argument('--max_seq_len', default=512, type=int, help="序列长度")
-    parser.add_argument("--data_path", type=str, default="{你的文件路径}", help="预处理后的.bin文件路径")
+    parser.add_argument("--data_path", type=str, default="/root/autodl-tmp/Crane_plus_LLM/SpongeBobPRO_pretrain_512_final.bin", help="预处理后的.bin文件路径")
     parser.add_argument('--from_weight', default='none', type=str, help="基于哪个权重训练，为none则从头开始")
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")
     parser.add_argument("--use_swanlab", type=int, default=1, choices=[0, 1], help="是否使用swanlab（0=否，1=是）")
@@ -131,7 +171,7 @@ if __name__ == "__main__":
 
     if args.eval_bench == 1:
         from transformers import AutoTokenizer
-        tokenizer = AutoTokenizer.from_pretrained(r'D:\project_nju\CranePlus\tokenizer_15k')
+        tokenizer = AutoTokenizer.from_pretrained(r'/root/autodl-tmp/Crane_plus_LLM/tokenizer_15k')
         Logger('Tokenizer loaded for benchmark evaluation')
     else:
         tokenizer = None
@@ -169,8 +209,8 @@ if __name__ == "__main__":
     if args.eval_bench == 1 and tokenizer is not None and start_epoch == 0 and start_step == 0:
         Logger('Running initial benchmark evaluation (step 0)...')
         model.eval()
-        c3_path = r'D:\project_nju\CranePlus\benchmark\clue_c3_eval_500.jsonl'
-        xcopa_path = r'D:\project_nju\CranePlus\benchmark\xcopa_zh_merged.jsonl'
+        c3_path = r'/root/autodl-tmp/Crane_plus_LLM/benchmark/clue_c3_eval_500.jsonl'
+        xcopa_path = r'/root/autodl-tmp/Crane_plus_LLM/benchmark/xcopa_zh_merged.jsonl'
         eval_results = run_benchmark(model, tokenizer, c3_path, xcopa_path)
         if swanlab_run:
             swanlab_run.log(eval_results, step=0)
