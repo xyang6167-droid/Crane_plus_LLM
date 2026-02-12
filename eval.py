@@ -4,7 +4,7 @@ CranePlus 模型交互式对话脚本（简化版）
 import argparse
 import torch
 from transformers import AutoTokenizer, TextStreamer
-from model.config import SpongeBobConfig
+from model.config import Crane_PlusConfig
 from model.model_crane_plus import CraneForCausalLM
 
 def main():
