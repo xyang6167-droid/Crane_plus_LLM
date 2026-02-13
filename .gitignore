@@ -9,7 +9,8 @@ __pycache__/
 *.pt
 *.safetensors
 
-# 注意：.bin 文件允许推送（用于预训练数据文件）
+# 预训练数据文件（忽略，文件太大超过 GitHub LFS 2GB 限制）
+*.bin
 
 # 环境文件
 venv/
