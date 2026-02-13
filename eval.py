@@ -1,5 +1,5 @@
 """
-CranePlus 模型交互式对话脚本（简化版）
+CranePlus模型交互式对话脚本（简化版）
 """
 import argparse
 import torch
@@ -9,15 +9,14 @@ from model.model_crane_plus import CraneForCausalLM
 
 def main():
     parser = argparse.ArgumentParser(description="CranePlus模型交互对话")
-    parser.add_argument('--max_new_tokens', default=256, type=int, help="最大生成长度（对话建议 128~256，避免过长重复）")
-    parser.add_argument('--model_path', default=r'D:\project_nju\CranePlus\only_pretrain_model\pretrain_768.pth', type=str, help="模型权重路径（.pth文件）")
+    parser.add_argument('--model_path', default=r'D:\project_nju\CranePlus\pretrain_model\global_step_45000\pretrain_768.pth', type=str, help="模型权重路径（.pth文件）")
     parser.add_argument('--tokenizer_path', default='./tokenizer_15k', type=str, help="Tokenizer路径")
     parser.add_argument('--model_type', default='sft', type=str, choices=['pretrain', 'sft'], help="模型类型：pretrain（文本续写）或 sft（对话）")
     parser.add_argument('--hidden_size', default=768, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=12, type=int, help="隐藏层数量")
+    parser.add_argument('--max_new_tokens', default=2048, type=int, help="最大生成长度")
     parser.add_argument('--temperature', default=0.2, type=float, help="生成温度（0-1）")
     parser.add_argument('--top_p', default=0.7, type=float, help="nucleus采样阈值")
-    parser.add_argument('--repetition_penalty', default=1.5, type=float, help="重复惩罚，越大越抑制重复")
     parser.add_argument('--device', default='cuda' if torch.cuda.is_available() else 'cpu', type=str)
     parser.add_argument('--multi_turn', action='store_true', help="保留对话历史（多轮）；不传则单轮，每轮独立")
     args = parser.parse_args()
@@ -77,7 +76,7 @@ def main():
         inputs = tokenizer(formatted_input, return_tensors="pt").to(args.device)
         
         # 生成回复
-        print('CranePlus: ', end='', flush=True)
+        print('🧽 CranePlus: ', end='', flush=True)
         with torch.no_grad():
             generated_ids = model.generate(
                 inputs=inputs["input_ids"],
@@ -89,7 +88,7 @@ def main():
                 eos_token_id=tokenizer.eos_token_id,
                 top_p=args.top_p,
                 temperature=args.temperature,
-                repetition_penalty=args.repetition_penalty
+                repetition_penalty=1.2
             )
         
         response = tokenizer.decode(
