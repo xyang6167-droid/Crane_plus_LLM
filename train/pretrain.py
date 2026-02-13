@@ -109,7 +109,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_workers", type=int, default=8, help="数据加载线程数")
     parser.add_argument("--accumulation_steps", type=int, default=1, help="梯度累积步数")
     parser.add_argument("--grad_clip", type=float, default=1.0, help="梯度裁剪阈值")
-    parser.add_argument("--log_interval", type=int, default=10, help="日志打印间隔")
+    parser.add_argument("--log_interval", type=int, default=500, help="日志打印间隔")
     parser.add_argument("--save_interval", type=int, default=1000, help="模型保存间隔")
     parser.add_argument('--hidden_size', default=768, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=12, type=int, help="隐藏层数量")
@@ -121,7 +121,7 @@ if __name__ == "__main__":
     parser.add_argument("--swanlab_project", type=str, default="Crane-Pretrain", help="swanlab项目名")
     parser.add_argument("--use_compile", default=1, type=int, choices=[0, 1], help="是否使用torch.compile加速（0=否，1=是）")
     parser.add_argument("--eval_bench", default=1, type=int, choices=[0, 1], help="是否评测benchmark（0=否，1=是）")
-    parser.add_argument("--eval_interval", type=int, default=500, help="评测间隔步数")
+    parser.add_argument("--eval_interval", type=int, default=1000, help="评测间隔步数")
     args = parser.parse_args()
 
 # ========== 1. 配置目录、模型参数、检查 ckp ==========
@@ -185,7 +185,7 @@ if __name__ == "__main__":
     Logger('Dataset ready')
 
     scaler = torch.amp.GradScaler('cuda', enabled=(args.dtype == 'float16'))
-    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=0.01)
+    optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate, weight_decay=0.1)
     Logger('Optimizer ready')
 
     # ========== 6. 从 ckp 恢复 ==========

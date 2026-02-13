@@ -11,7 +11,7 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 from .config import Crane_PlusConfig
 
 class RMSNorm(torch.nn.Module):
-    def __init__(self, dim: int, eps: float = 1e-8):
+    def __init__(self, dim: int, eps: float = 1e-5):
         super().__init__()
         self.eps=eps
         self.weight=nn.Parameter(torch.ones(dim))
@@ -175,6 +175,13 @@ class Attention(nn.Module):
           xv=torch.cat([past_key_value[1],xv],dim=1)
 
         past_kv=(xk,xv) if use_cache else None
+         # 转置并重复 KV（用于 GQA）
+        # (batch, seq_len, num_heads, head_dim) -> (batch, num_heads, seq_len, head_dim)
+        xq, xk, xv = (
+            xq.transpose(1, 2),
+            repeat_kv(xk, self.n_rep).transpose(1, 2),
+            repeat_kv(xv, self.n_rep).transpose(1, 2)
+        )
         # 使用 Flash Attention (PyTorch >= 2.0) - 仅在训练时且无 KV cache 时启用
         if self.flash and (seq_len > 1) and (past_key_value is None):
             if attention_mask is None or torch.all(attention_mask == 1):

@@ -1,0 +1,35 @@
+# Python 缓存文件（忽略）
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 模型权重文件（忽略，大文件）
+*.pth
+*.pt
+*.safetensors
+
+# 注意：.bin 文件允许推送（用于预训练数据文件）
+
+# 环境文件
+venv/
+env/
+ENV/
+.venv
+
+# IDE 配置
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+
+# 临时文件
+*.tmp
+*.temp
