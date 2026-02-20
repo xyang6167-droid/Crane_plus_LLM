@@ -5,7 +5,7 @@ __pycache__/
 *.so
 
 # 模型权重文件（忽略，大文件）
-
+*.pth
 *.pt
 *.safetensors
 
