@@ -29,7 +29,7 @@ from torch import optim, nn
 from torch.nn.parallel import DistributedDataParallel  # DDP：多卡同步梯度
 from torch.utils.data import DataLoader, DistributedSampler  # 每卡分片数据，不重复
 from transformers import AutoTokenizer  # [SFT] SFT 需一开始就加载 tokenizer（给 SFTDataset 用），pretrain 仅在 eval_bench=1 时加载
-from model.config import SpongeBobConfig
+from model.config import Crane_PlusConfig
 from model.model_crane_plus import CraneForCausalLM
 from dataset.sft_dataset import SFTDataset  # [SFT] pretrain 用 PretrainDataset(.bin)，SFT 用 SFTDataset(jsonl + 只算 assistant loss)
 from utils import get_lr, Logger, is_main_process, init_distributed_mode, SkipBatchSampler
@@ -155,7 +155,7 @@ if __name__ == "__main__":
     if dist.is_initialized(): args.device = f"cuda:{local_rank}"
 
     # ========== 2. 配置目录、模型参数、检查 ckp ==========
-    lm_config = SpongeBobConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers)
+    lm_config = Crane_PlusConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers)
 
     # 与 pretrain 一致：用 run_name 做子目录
     run_name = f"h{args.hidden_size}_l{args.num_hidden_layers}_bs{args.batch_size}_lr{args.learning_rate}"
